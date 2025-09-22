@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Upload du fichier
-uploaded_file = st.file_uploader("Importer le planning Excel", type=["xlsx"])
+uploaded_file = st.file_uploader("Planning GRE_SY 2025 (v11)", type=["xlsx"])
 
 if uploaded_file:
     xls = pd.ExcelFile(uploaded_file)
@@ -59,3 +59,4 @@ if uploaded_file:
         st.download_button("Télécharger en CSV", data=csv, file_name="planning_filtré.csv", mime="text/csv")
 else:
     st.info("Veuillez importer un fichier Excel de planning.")
+
