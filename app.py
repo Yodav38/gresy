@@ -13,7 +13,6 @@ xls = pd.ExcelFile(uploaded_file, engine="openpyxl")
 
 for sheet in xls.sheet_names:
     try:
-        # Lire l'onglet brut (même si cellules fusionnées)
         df = pd.read_excel(uploaded_file, sheet_name=sheet, header=None, engine="openpyxl")
 
         # Repérer où commence le tableau (colonne ≈ "Nom")
@@ -22,11 +21,9 @@ for sheet in xls.sheet_names:
         except IndexError:
             continue
 
-        # Relire proprement à partir du tableau
         df_clean = pd.read_excel(uploaded_file, sheet_name=sheet, skiprows=start_row+1, engine="openpyxl")
 
         if "Nom" in df_clean.columns and "Prénom" in df_clean.columns:
-            # Reformatage long : un enregistrement par jour
             id_vars = ["Nom", "Prénom"]
             value_vars = [c for c in df_clean.columns if c not in id_vars]
 
@@ -43,7 +40,7 @@ if all_data:
     planning = pd.concat(all_data, ignore_index=True)
 
     # ---------------------------
-    # 2. Interface de filtrage
+    # Filtres
     # ---------------------------
     st.sidebar.header("Filtres")
     personnes = planning["Nom"].dropna().unique()
@@ -59,13 +56,35 @@ if all_data:
         filtered = filtered[filtered["Mois"] == selected_mois]
 
     # ---------------------------
-    # 3. Affichage
+    # Affichage style calendrier
     # ---------------------------
-    st.write("### Planning filtré")
-    st.dataframe(filtered)
+    st.write("### Vue calendrier")
 
+    if not filtered.empty:
+        # Pivot pour recréer une grille
+        try:
+            cal = filtered.pivot_table(
+                index=["Nom", "Prénom"], 
+                columns="Date", 
+                values="Activité", 
+                aggfunc=lambda x: " / ".join(str(v) for v in x if pd.notna(v))
+            ).fillna("")
+
+            # Trier les colonnes par ordre chronologique si ce sont des nombres
+            try:
+                cal = cal[sorted(cal.columns, key=lambda x: int(str(x)) if str(x).isdigit() else str(x))]
+            except:
+                pass
+
+            st.dataframe(cal)
+        except Exception as e:
+            st.error(f"Impossible d’afficher la vue calendrier : {e}")
+
+    # ---------------------------
     # Export CSV
+    # ---------------------------
     csv = filtered.to_csv(index=False).encode('utf-8')
     st.download_button("Télécharger en CSV", data=csv, file_name="planning_filtré.csv", mime="text/csv")
 else:
     st.error("Aucune donnée exploitable trouvée dans le fichier.")
+
